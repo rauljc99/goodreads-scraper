@@ -27,16 +27,16 @@ class GoodreadsScraper:
         self.session.headers.update(self.headers)
         
         # Crear carpeta para portadas
-        self.covers_dir = "book_covers"
+        self.covers_dir = "covers"
         os.makedirs(self.covers_dir, exist_ok=True)
         
         # Contador para límites
         self.cover_download_count = 0
-        self.max_covers_per_session = 100
+        self.max_covers_per_page = 3
 
     def download_cover(self, cover_url, book_title):
         """Descarga la portada con mejor resolución y nombre sanitizado"""
-        if not cover_url or cover_url == 'N/A' or self.cover_download_count >= self.max_covers_per_session:
+        if not cover_url or cover_url == 'N/A' or self.cover_download_count >= self.max_covers_per_page:
             return 'N/A'
         
         try:
@@ -66,7 +66,7 @@ class GoodreadsScraper:
                 f.write(response.content)
             
             self.cover_download_count += 1
-            logger.info(f"✅ Portada {self.cover_download_count}/{self.max_covers_per_session}: {book_title[:30]}")
+            logger.info(f"✅ Portada {self.cover_download_count}/{self.max_covers_per_page}: {book_title[:30]}")
             return filename
             
         except Exception as e:
@@ -115,44 +115,22 @@ class GoodreadsScraper:
                 
                 ratings_match = re.search(r'([\d,]+)\s+ratings', rating_text)
                 book['ratings_count'] = ratings_match.group(1).replace(',', '') if ratings_match else 'N/A'
-                
-                reviews_match = re.search(r'([\d,]+)\s+reviews', rating_text)
-                book['reviews_count'] = reviews_match.group(1).replace(',', '') if reviews_match else 'N/A'
             else:
                 book['avg_rating'] = 'N/A'
                 book['ratings_count'] = 'N/A'
-                book['reviews_count'] = 'N/A'
-            
-            # Score de la lista
-            score_element = book_row.find('span', class_='smallText', string=re.compile('score:'))
-            if score_element:
-                score_text = score_element.get_text(strip=True)
-                score_match = re.search(r'score:\s*([\d,]+)', score_text)
-                book['list_score'] = score_match.group(1).replace(',', '') if score_match else 'N/A'
-            else:
-                book['list_score'] = 'N/A'
-            
-            # Año de publicación
-            year_match = re.search(r'\((\d{4})\)', book['title'])
-            book['published_year'] = year_match.group(1) if year_match else 'N/A'
-            
-            # Posición en la lista
-            rank_element = book_row.find('td', class_='number')
-            book['rank'] = rank_element.get_text(strip=True) if rank_element else 'N/A'
             
             # Portada del libro
             cover_element = book_row.find('img', class_='bookCover')
             book['cover_url'] = cover_element['src'] if cover_element else 'N/A'
             
             # Descargar portada SOLO si no hemos alcanzado el límite
-            if download_covers and self.cover_download_count < self.max_covers_per_session:
+            if download_covers and self.cover_download_count < self.max_covers_per_page:
                 book['cover_id'] = self.download_cover(book['cover_url'], book['title'])
             else:
                 book['cover_id'] = 'N/A'
             
-            # Timestamp y IDs
+            # Timestamp
             book['scraped_at'] = time.strftime('%Y-%m-%d %H:%M:%S')
-            book['book_id'] = str(uuid.uuid4())
             
             return book
         except Exception as e:
@@ -160,6 +138,9 @@ class GoodreadsScraper:
             return None
 
     def scrape_list_page(self, list_url, page_num=1, download_covers=True):
+        """ Scrapea una página listado """
+        self.cover_download_count = 0
+
         if page_num == 1:
             url = list_url
         else:
@@ -193,32 +174,88 @@ class GoodreadsScraper:
             logger.error(f"Error en página {page_num}: {e}")
             return [], False
 
+def load_existing_data(filename):
+    """Carga datos existentes del CSV si existe"""
+    existing_books = []
+    if os.path.exists(filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                existing_books = list(reader)
+            logger.info(f"📁 Cargados {len(existing_books)} libros existentes de {filename}")
+        except Exception as e:
+            logger.warning(f"⚠️ Error cargando archivo existente: {e}")
+    return existing_books
+
+def get_existing_urls(existing_books):
+    """Obtiene las URLs de libros ya existentes para evitar duplicados"""
+    return set(book['book_url'] for book in existing_books if book.get('book_url') != 'N/A')
+
+def get_existing_book_map(existing_books):
+    """Crea un mapa de libros existentes por URL"""
+    return {book['book_url']: book for book in existing_books if book.get('book_url') != 'N/A'}
+
+def merge_books_data(existing_books, new_books):
+    """Combina libros existentes con nuevos, evitando duplicados y actualizando portadas"""
+    existing_book_map = get_existing_book_map(existing_books)
+    merged_books = existing_books.copy()  # Empezar con todos los existentes
+    new_books_count = 0
+    updated_covers = 0
+    
+    for new_book in new_books:
+        book_url = new_book['book_url']
+        
+        if book_url in existing_book_map:
+            # Libro existente - actualizar portada si falta
+            existing_book = existing_book_map[book_url]
+            if existing_book.get('cover_id') == 'N/A' and new_book.get('cover_id') != 'N/A':
+                # Actualizar la portada en el libro existente
+                for book in merged_books:
+                    if book['book_url'] == book_url:
+                        book['cover_id'] = new_book['cover_id']
+                        break
+                updated_covers += 1
+        else:
+            # Libro nuevo - añadir
+            merged_books.append(new_book)
+            existing_book_map[book_url] = new_book
+            new_books_count += 1
+    
+    logger.info(f"🔄 Merge: {len(existing_books)} existentes + {new_books_count} nuevos + {updated_covers} portadas actualizadas")
+    return merged_books
+
 def save_to_csv(books_data, filename):
+    """Guarda datos en CSV, creando el archivo si no existe"""
     if not books_data:
         logger.warning("No hay datos para guardar")
         return
     
-    with open(filename, 'w', newline='', encoding='utf-8') as file:
-        fieldnames = books_data[0].keys()
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(books_data)
-    
-    logger.info(f"💾 CSV guardado: {filename}")
+    try:
+        with open(filename, 'w', newline='', encoding='utf-8') as file:
+            fieldnames = books_data[0].keys()
+            writer = csv.DictWriter(file, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(books_data)
+        
+        logger.info(f"💾 CSV guardado: {filename} ({len(books_data)} libros)")
+    except Exception as e:
+        logger.error(f"❌ Error guardando CSV: {e}")
 
 def main():
     LIST_SHOW = "1.Best_Books_Ever"
-    START_PAGE = 30
+    START_PAGE = 1
     END_PAGE = 50
     DOWNLOAD_COVERS = True
     OUTPUT_FILE = f"goodreads_{LIST_SHOW.replace('.', '_')}.csv"
     
     scraper = GoodreadsScraper(
-        delay_between_pages=30,
+        delay_between_pages=15,
         delay_between_covers=2
     )
     
-    books_data = []
+    # Cargar datos existentes al inicio
+    existing_books = load_existing_data(OUTPUT_FILE)
+    books_data = existing_books.copy()  # Empezar con los datos existentes
     
     def handle_interrupt(sig, frame):
         print(f"\n\n🛑 Interrupción detectada (Ctrl+C)!")
@@ -226,12 +263,13 @@ def main():
         
         if books_data:
             save_to_csv(books_data, OUTPUT_FILE)
-            books_with_covers = sum(1 for book in books_data if book['cover_id'] != 'N/A')
+            books_with_covers = sum(1 for book in books_data if book.get('cover_id') != 'N/A')
             
             print(f"\n📊 RESUMEN PARCIAL:")
-            print(f"📚 Libros obtenidos: {len(books_data)}")
+            print(f"📚 Libros totales: {len(books_data)}")
+            print(f"📚 Libros nuevos añadidos: {len(books_data) - len(existing_books)}")
             print(f"🖼️  Portadas descargadas: {books_with_covers}")
-            print(f"📄 Páginas procesadas: {max(book['page'] for book in books_data)}")
+            print(f"📄 Páginas procesadas: {max(int(book.get('page', 0)) for book in books_data)}")
             print(f"💾 Archivo CSV: {OUTPUT_FILE}")
             print(f"📁 Carpeta portadas: {scraper.covers_dir}")
         else:
@@ -249,14 +287,17 @@ def main():
         has_next_page = True
         
         logger.info(f"🚀 Iniciando scraping de: {LIST_SHOW} (páginas {START_PAGE}-{END_PAGE})")
+        logger.info(f"📊 Base de datos: {len(existing_books)} libros existentes")
         if DOWNLOAD_COVERS:
-            logger.info(f"🖼️  Descargando portadas (límite: {scraper.max_covers_per_session})")
+            logger.info(f"🖼️  Descargando portadas (límite: {scraper.max_covers_per_page})")
         
         while has_next_page and current_page <= END_PAGE:
-            books, has_next_page = scraper.scrape_list_page(base_url, current_page, download_covers=DOWNLOAD_COVERS)
+            new_books, has_next_page = scraper.scrape_list_page(base_url, current_page, download_covers=DOWNLOAD_COVERS)
             
-            books_data.extend(books)
-            logger.info(f"📦 Datos acumulados: {len(books_data)} libros")
+            # Combinar nuevos libros con los existentes (evitando duplicados)
+            books_data = merge_books_data(books_data, new_books)
+            
+            logger.info(f"📦 Datos acumulados: {len(books_data)} libros ({len(new_books)} nuevos en página {current_page})")
                         
             if has_next_page and current_page < END_PAGE:
                 logger.info(f"⏳ Esperando {scraper.delay_between_pages} segundos...")
@@ -270,12 +311,14 @@ def main():
         if books_data:
             save_to_csv(books_data, OUTPUT_FILE)
             
-            books_with_covers = sum(1 for book in books_data if book['cover_id'] != 'N/A')
+            books_with_covers = sum(1 for book in books_data if book.get('cover_id') != 'N/A')
+            new_books_count = len(books_data) - len(existing_books)
             
             print(f"\n📊 RESUMEN FINAL:")
-            print(f"📚 Libros obtenidos: {len(books_data)}")
+            print(f"📚 Libros totales: {len(books_data)}")
+            print(f"📚 Libros nuevos añadidos: {new_books_count}")
             print(f"🖼️  Portadas descargadas: {books_with_covers}")
-            print(f"📄 Páginas procesadas: {max(book['page'] for book in books_data)}")
+            print(f"📄 Páginas procesadas: {max(int(book.get('page', 0)) for book in books_data)}")
             print(f"💾 Archivo CSV: {OUTPUT_FILE}")
             print(f"📁 Carpeta portadas: {scraper.covers_dir}")
             
