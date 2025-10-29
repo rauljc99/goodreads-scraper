@@ -65,16 +65,11 @@ El CSV generado contiene las siguientes columnas:
 | author | string | Autor del libro |
 | avg_rating | float | Rating promedio (1-5) |
 | ratings_count | int | Número total de ratings |
-| reviews_count | int | Número total de reseñas |
-| list_score | int | Puntuación en la lista |
-| published_year | int | Año de publicación |
-| rank | int | Posición en la lista |
 | page | int | Página donde fue encontrado |
 | cover_url | string | URL original de la portada |
 | cover_id | string | Nombre del archivo de portada |
 | book_url | string | URL del libro en Goodreads |
 | author_url | string | URL del autor en Goodreads |
-| book_id | string | ID único del libro |
 | scraped_at | datetime | Fecha y hora del scraping |
 
 ## Estructura del Proyecto
@@ -83,7 +78,7 @@ El CSV generado contiene las siguientes columnas:
 goodreads-scraper/
 ├── goodreads_scraper.py     # Script principal
 ├── requirements.txt         # Dependencias de Python
-├── book_covers/            # Carpeta de portadas descargadas
+├── covers/                  # Carpeta de portadas descargadas
 │   ├── titulo_libro1.jpg
 │   ├── titulo_libro2.jpg
 │   └── ...
@@ -96,7 +91,7 @@ goodreads-scraper/
 Este scraper incluye medidas para el scraping responsable:
 
 - Delays configurables entre peticiones
-- Límites en descargas de portadas (10 por ejecución)
+- Límites en descargas de portadas (10 por página)
 - User-Agent identificable
 - Manejo automático de rate limiting
 - Verificación de existencia de archivos para evitar duplicados
@@ -113,7 +108,9 @@ Presiona `Ctrl+C` en cualquier momento para:
 
 ### Reanudación Inteligente
 - Las portadas no se redescargan si ya existen
-- Puedes ejecutar múltiples veces incrementando el rango de páginas
+- Los libros existentes sin portada se actualizan automáticamente cuando se descarga la portada
+- Ejecuciones múltiples no crean duplicados en el CSV
+- Puedes ejecutar incrementando el rango de páginas
 
 ## Solución de Problemas
 
@@ -121,7 +118,7 @@ Presiona `Ctrl+C` en cualquier momento para:
 1. **Dependencias faltantes**: Ejecutar `pip install -r requirements.txt`
 2. **Lista no encontrada**: Verificar que el ID de lista existe
 3. **Rate limiting**: El script espera automáticamente 2 minutos
-4. **Portadas no descargan**: Revisar conexión a internet y límites
+4. **Portadas no descargan**: Revisar conexión a internet y límites por página
 
 ### Logs detallados
 El script proporciona logs informativos sobre:
