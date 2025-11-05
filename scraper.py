@@ -3,7 +3,7 @@
 Entry point script para el scraper
 """
 
-from src.main import main
+from source.main import main
 
 if __name__ == "__main__":
     main()
