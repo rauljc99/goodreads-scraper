@@ -71,16 +71,17 @@ python scraper.py --delay-pages 30 --delay-covers 5 --end-page 20
 
 ```
 goodreads-scraper/
-├── src/                        # Código fuente
+├── source/                    # Código fuente
 │   ├── config.py              # Configuración
 │   ├── scraper.py             # Clase principal
 │   ├── parser.py              # Parsing HTML
 │   ├── file_handler.py        # Manejo CSV
 │   ├── utils.py               # Utilidades
 │   └── main.py                # CLI
-├── dataset/                    # CSVs generados
-├── covers/                     # Portadas
+├── dataset/                   # CSVs generados y portadas
+│   └── covers/                # Portadas
 ├── scraper.py                 # Entrada principal
+├── README.md                  # Este documento
 └── requirements.txt
 ```
 
@@ -104,8 +105,8 @@ El CSV incluye estas columnas:
 ## Uso programático
 
 ```python
-from src import GoodreadsScraper, ScraperConfig
-from src.file_handler import save_to_csv
+from source import GoodreadsScraper, ScraperConfig
+from source.file_handler import save_to_csv
 
 # Configuración
 config = ScraperConfig(

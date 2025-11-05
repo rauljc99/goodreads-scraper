@@ -33,7 +33,7 @@ class ScraperConfig:
     rate_limit_wait: int = 120  # tiempo de espera si nos bloquean
     
     # Rutas de archivos
-    covers_dir: str = "covers"
+    covers_dir: str = "dataset/covers"
     output_file: Optional[str] = None
     
     # User agent para las peticiones HTTP

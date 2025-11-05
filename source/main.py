@@ -84,7 +84,7 @@ def parse_arguments() -> argparse.Namespace:
     # Archivos
     parser.add_argument('--output', type=str,
                        help='Nombre del archivo CSV de salida')
-    parser.add_argument('--covers-dir', type=str, default='covers',
+    parser.add_argument('--covers-dir', type=str, default='dataset/covers',
                        help='Carpeta para guardar portadas')
     
     # Logging
