@@ -49,6 +49,13 @@ class ScraperConfig:
             # Crear carpeta dataset si no existe
             os.makedirs("dataset", exist_ok=True)
             self.output_file = f"dataset/goodreads_{self.list_id.replace('.', '_')}.csv"
+        
+        # Asegurar que covers_dir siempre esté dentro de dataset si es relativo
+        if not os.path.isabs(self.covers_dir) and not self.covers_dir.startswith("dataset/"):
+            self.covers_dir = os.path.join("dataset", self.covers_dir)
+        
+        # Crear carpeta de portadas si no existe
+        os.makedirs(self.covers_dir, exist_ok=True)
     
     @property
     def base_url(self) -> str:

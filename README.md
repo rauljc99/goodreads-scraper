@@ -64,7 +64,7 @@ python scraper.py --delay-pages 30 --delay-covers 5 --end-page 20
 | `--delay-pages` | Segundos entre páginas | 15 |
 | `--delay-covers` | Segundos entre portadas | 2 |
 | `--output` | Archivo CSV salida | auto |
-| `--covers-dir` | Carpeta portadas | covers |
+| `--covers-dir` | Carpeta portadas | dataset/covers |
 | `--verbose` | Logging detallado | False |
 
 ## Estructura del proyecto
