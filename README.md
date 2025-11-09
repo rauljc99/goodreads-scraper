@@ -1,5 +1,9 @@
 # Goodreads Scraper
 
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17563418.svg)](https://doi.org/10.5281/zenodo.17563418)
+
+
 Un scraper de Python para extraer datos de listas de libros de Goodreads, desarrollado como parte de la Práctica 1 de la asignatura "Tipología y ciclo de vida de los datos" del Máster en Ciencia de Datos de la UOC.
 
 ## Características principales
@@ -180,13 +184,28 @@ El script espera automáticamente 2 minutos y reintenta.
 python scraper.py --verbose --end-page 1
 ```
 
-## DOI Dataset
+## Citar el Dataset
 
-A publicar en Zenodo.
+
+```
+@dataset{raul_javierre_2025_17563418,
+  author       = {Raúl Javierre and
+                  José Marín},
+  title        = {Goodreads: Best Books Ever},
+  month        = nov,
+  year         = 2025,
+  publisher    = {Zenodo},
+  version      = {v.0.0.1},
+  doi          = {10.5281/zenodo.17563418},
+  url          = {https://doi.org/10.5281/zenodo.17563418},
+}
+```
 
 ## Licencia
 
-A decidir.
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+Este proyecto está licenciado bajo la licencia Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0).
 
 ## Autores
 
